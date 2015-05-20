@@ -95,14 +95,16 @@ def listItems(offset):
 		contentEncoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded').text
 		extra = item.find('{http://i0.cz/bbx/rss/}extra')
 		subtype = extra.get('subtype')
-		dur = extra.get('duration').strip()
+		dur = extra.get('duration')
 		datetime = eut.parsedate(item.find('pubDate').text.strip())
 		date = time.strftime('%d.%m.%Y', datetime)
 		image = re.compile('<img.+?src="([^"]*?)"').search(contentEncoded).group(1)
 		li = xbmcgui.ListItem(title)
-		if dur:
-			d = re.compile('([0-9]?[0-9]):([0-9][0-9])').search(dur)
-			duration = (int(d.group(1))*60+int(d.group(2)))		
+		if dur and ':' in dur:
+			l = dur.strip().split(':')
+			duration = 0
+			for pos, value in enumerate(l[::-1]):
+				duration += int(value) * 60 ** pos
 			li.addStreamInfo('video', {'duration': duration})
 		if subtype == 'playlist':
 			li.setLabel2('Playlist')
