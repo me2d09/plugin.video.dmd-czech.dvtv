@@ -1,1 +1,1 @@
-# plugin.video.dmd-czech.dvtv
+# plugin.video.dmd-czech.aktualne

@@ -1,6 +1,6 @@
 #/bin/sh
 # do NOT use this script from XBMC addons directory, it is intented for development only
-DESTDIR=~/.kodi/addons/plugin.video.dmd-czech.dvtv
+DESTDIR=~/.kodi/addons/plugin.video.dmd-czech.aktualne
 
 rm -rf ${DESTDIR}
 mkdir -p ${DESTDIR}
