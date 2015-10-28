@@ -17,21 +17,27 @@ import time
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-_rssUrl_ = 'http://video.aktualne.cz/rss/dvtv/'
+_rssUrl_ = 'http://video.aktualne.cz/rss/'
 
-_addon_ = xbmcaddon.Addon('plugin.video.dmd-czech.dvtv')
+_addon_ = xbmcaddon.Addon('plugin.video.dmd-czech.aktualne')
 _lang_   = _addon_.getLocalizedString
 _scriptname_ = _addon_.getAddonInfo('name')
-_baseurl_ = 'http://video.aktualne.cz/dvtv/'
+_baseurl_ = 'http://video.aktualne.cz/'
+_homepage_ = 'http://video.aktualne.cz/forcedevice/smart/'
 _UserAgent_ = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3'
 _quality_ = _addon_.getSetting('quality')
 _format_ = 'video/' + _addon_.getSetting('format').lower()
-_icon_ = xbmc.translatePath( os.path.join(_addon_.getAddonInfo('path'), 'resources/media/ikona-aktualne-57x57.png' ) )
+_firetvhack_ = _addon_.getSetting('firetvhack') == "true"
+home = _addon_.getAddonInfo('path')
+_icon_ = xbmc.translatePath( os.path.join(home, 'resources/media/ikona-aktualne-57x57.png' ) )
+_mediadir_ = xbmc.translatePath( os.path.join(home, 'resources/media/' ) )
 _htmlParser_ = HTMLParser.HTMLParser()
-_dialogTitle_ = 'DVTV.cz'
+_dialogTitle_ = 'Aktuálně TV'
+
+fanart = xbmc.translatePath( os.path.join( home, 'fanart.jpg' ) )
 
 if _quality_ == '':
-    xbmc.executebuiltin("XBMC.Notification('Doplněk DVTV','Vyberte preferovanou kvalitu!',30000,"+_icon_+")")
+    xbmc.executebuiltin("XBMC.Notification('Doplněk Aktuálně','Vyberte preferovanou kvalitu!',30000,"+_icon_+")")
     _addon_.openSettings() 
 
 def log(msg, level=xbmc.LOGDEBUG):
@@ -56,6 +62,7 @@ def showErrorNotification(message):
 	showNotification(message, 'error')
 
 def fetchUrl(url, label):
+	logDbg("fetchUrl " + url + ", label:" + label)
 	pDialog = xbmcgui.DialogProgress()
 	pDialog.create(_dialogTitle_, label)
 	httpdata = ''	
@@ -80,8 +87,8 @@ def fetchUrl(url, label):
 		pDialog.close()	
 	return httpdata
 
-def listItems(offset):
-	url = _rssUrl_
+def listItems(offset, urladd):
+	url = _rssUrl_ + urladd
 	if offset > 0:
 		url += '?offset=' + str(offset)
 	rss = fetchUrl(url, _lang_(30003))
@@ -112,16 +119,17 @@ def listItems(offset):
 		li.setIconImage(_icon_)
 		li.setInfo('video', {'title': title, 'plot': description, 'date': date})
 		li.setProperty('fanart_image',image)
-		u=sys.argv[0]+'?url='+urllib.quote_plus(link.encode('utf-8'))
+		u=sys.argv[0]+'?mode=10&url='+urllib.quote_plus(link.encode('utf-8'))
 		xbmcplugin.addDirectoryItem(handle=addon_handle, url=u, listitem=li)
 	o = offset + 30	
-	u = sys.argv[0]+'?offset='+urllib.quote_plus(str(o))
+	u = sys.argv[0]+'?mode=1&url='+urllib.quote_plus(urladd.encode('utf-8'))+'&offset='+urllib.quote_plus(str(o))
 	liNext = xbmcgui.ListItem(_lang_(30006))
 	xbmcplugin.addDirectoryItem(handle=addon_handle,url=u,listitem=liNext,isFolder=True)	
 	xbmcplugin.endOfDirectory(addon_handle)
 
 def playUrl(url):
 	httpdata = fetchUrl(url, _lang_(30004))
+	twice = False
 	if (not httpdata):
 		return
 	if httpdata: 
@@ -129,6 +137,8 @@ def playUrl(url):
 		if videos:
 			pl=xbmc.PlayList(1)
 			pl.clear()
+			if _firetvhack_ and len(videos) == 1:
+				twice = True        
 			for video in videos:
 				image = 'http:' + re.compile('image: ?\'([^\']*?)\'').search(video).group(1).strip()
 				title = _htmlParser_.unescape(re.compile('title: ?\'([^\']*?)\'').search(video).group(1).strip())
@@ -148,7 +158,8 @@ def playUrl(url):
 							li.addStreamInfo('video', {'language': 'cs'})
 							if (quality == _quality_ and mime == _format_):
 								xbmc.PlayList(1).add(url, li)
-										
+								if twice:
+									xbmc.PlayList(1).add(url, li)  					
 			xbmc.Player().play(pl)
 		else:
 			showErrorNotification(_lang_(30005))
@@ -170,11 +181,51 @@ def get_params():
                                 param[splitparams[0]]=splitparams[1]
         return param
 
+def listShows():
+    request = urllib2.Request(_homepage_)
+    con = urllib2.urlopen(request)
+    data = con.read()
+    con.close()
+    match = re.compile('<a href="/#porady">.+?</a>.+?<ul class="dropdown">(.+?)</ul>', re.DOTALL).findall(data)
+    if len(match):
+      match2 = re.compile('<li class="menusec-bvs.+?"><a href="/(.+?)/">(.+?)</a></li>').findall(match[0])
+      if len(match2) > 1:
+          for url2, name in match2:
+              addDir(name,url2,1)  
+    else:
+      #add all without parsing, just in case of the change of the page layout
+      addDir(u'DV TV','dvtv',1)
+      addDir(u'Petr Čtvrtníček TV','petr-ctvrtnicek-tv',1)
+    xbmcplugin.endOfDirectory(addon_handle)
+    
+def addDir(name,url,mode):
+    iconimage = _mediadir_ + url + ".jpg"
+    logDbg("addDir(): '"+name+"' url='"+url+"' icon='"+iconimage+"' mode='"+str(mode)+"'")
+    u=sys.argv[0]+"?url="+urllib.quote_plus(url.encode('utf-8'))+"&mode="+str(mode)+"&name="+urllib.quote_plus(name.encode('utf-8'))
+    ok=True
+    liz=xbmcgui.ListItem(name, iconImage="DefaultFolder.png", thumbnailImage=iconimage)   
+    liz.setInfo( type="Video", infoLabels={ "Title": name } )
+    changer = {
+        "zkrotte-sve-penize": "zkrotte-sve-penize.png",
+        "ze-sveta": "zesveta.jpg",
+        "48-hodin-v": "48-hodin.jpg",
+        "ego-night": "egonight.jpg",
+    }
+    urlfanart = changer.get(url, url + ".jpg")
+    liz.setProperty( "Fanart_Image", "http://i0.cz/bbx/video/img/video/porad-d-page-" + urlfanart )
+    ok=xbmcplugin.addDirectoryItem(handle=addon_handle,url=u,listitem=liz,isFolder=True)
+    return ok
+    
+    
 
 
 params=get_params()
 url=None
+name=None
+thumb=None
+mode=None
 offset=0
+
 try:
         url=urllib.unquote_plus(params["url"])
 except:
@@ -183,10 +234,26 @@ try:
         offset=int(urllib.unquote_plus(params["offset"]))
 except:
         pass
-if url:
-	STATS(url, "Item")
-	playUrl(url)
-else:
-	STATS("listItems", "Function")
-	listItems(offset)
+        
+try:
+        name=urllib.unquote_plus(params["name"])
+except:
+        pass
+try:
+        mode=int(params["mode"])
+except:
+        pass
+
+
+
+if mode==None or url==None or len(url)<1:
+    STATS("OBSAH", "Function")
+    listShows()
+    logDbg("List Shows end")
+elif mode==1:
+    STATS("listItems", "Function")
+    listItems(offset, url)
+elif mode==10:
+    STATS(url, "Item")
+    playUrl(url)
 
