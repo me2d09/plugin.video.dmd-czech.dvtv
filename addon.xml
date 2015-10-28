@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.dmd-czech.dvtv" name="Drtinová Veselovský TV" version="1.2.3" provider-name="Štěpán Ort">
+<addon id="plugin.video.dmd-czech.aktualne" name="Aktuálně TV" version="2.0.0" provider-name="Petr Čermák, Štěpán Ort">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
 	<import addon="script.module.dmd-czech.common" version="1.5.5"/>
@@ -8,9 +8,9 @@
     <provides>video</provides>
   </extension>
   <extension point="xbmc.addon.metadata">
-    <summary>DVTV - Drtinová, Veselovský TV</summary>
-	<description>Plugin to play videos from DVTV.cz</description>
-    <description lang="cs">Exkluzivní rozhovory s vlivnými lidmi české politiky a byznysu. Nejlepší profesionálové v roli moderátorů, kteří se ptají tak přímo a tak dlouho, dokud nedostanou odpověď. Reportáže z míst, kde byste neměli chybět. Klíčové kulturní a společenské události. To vše nabízí první publicistický videokanál na českém internetu.</description>
+    <summary>Aktuálně TV</summary>
+	<description>Plugin to play videos from Aktualne.cz</description>
+    <description lang="cs">Aktuálně.TV - videa z domova i ze světa.</description>
     <platform>all</platform>
   </extension>
 </addon>
